@@ -133,3 +133,18 @@ void G1UncommitRegionTask::execute() {
     clear_summary();
   }
 }
+
+void G1UncommitRegionTask::_wait_if_active() {
+  // FIXME: OpenJDK's pthread_cond_t?
+  while (is_active()) {
+    STATIC_ASSERT(UncommitTaskDelayMs < MILLIUNITS);
+    os::naked_short_nanosleep(UncommitTaskDelayMs * NANOUNITS_PER_MILLIUNIT);
+  }
+}
+
+void G1UncommitRegionTask::wait_if_active() {
+  // Otherwise G1 GC is not in use.
+  if (_instance) {
+    _instance->_wait_if_active();
+  }
+}

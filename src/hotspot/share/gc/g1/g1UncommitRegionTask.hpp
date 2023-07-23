@@ -35,9 +35,9 @@ class G1UncommitRegionTask : public G1ServiceTask {
   // is short, while still making reasonable progress.
   static const uint UncommitSizeLimit = 128 * M;
   // Initial delay in milliseconds after GC before the regions are uncommitted.
-  static const uint UncommitInitialDelayMs = 10*1000; // 100;
+  static const uint UncommitInitialDelayMs = 100; // FIXME: for reproducibility: 10*1000
   // The delay between two uncommit task executions.
-  static const uint UncommitTaskDelayMs = 10*1000; // 10;
+  static const uint UncommitTaskDelayMs = 10;
 
   static G1UncommitRegionTask* _instance;
   static void initialize();
@@ -61,9 +61,12 @@ class G1UncommitRegionTask : public G1ServiceTask {
   void report_summary();
   void clear_summary();
 
+  void _wait_if_active();
+
 public:
   static void enqueue();
   virtual void execute();
+  static void wait_if_active();
 };
 
 #endif
