@@ -55,15 +55,24 @@ public class BigCheckpointTest implements CracTest {
     @Override
     public void test() throws Exception {
         CracBuilder builder = new CracBuilder()
-                .inDockerImage(imageName)
+//                .inDockerImage(imageName).withBaseImage("ghcr.io/crac/test-base", "latest")
                 .vmOption("-Xlog:gc,gc+heap,gc+heap+exit,gc+ergo+heap=debug")
+//                .vmOption("-XX:AllocateHeapAt=/tmp/javaheap")
+//                .vmOption("-XX:ZCollectionInterval=1")
+//                .vmOption("-XX:ZUncommitDelay=1")
+//                .vmOption("-XX:SoftMaxHeapSize=1G")
+//                .vmOption("-XX:+UseSerialGC")
+//                .vmOption("-XX:+UseParallelGC")
+//                .vmOption("-XX:+UseG1GC")
+//                .vmOption("-XX:+UseShenandoahGC")
+//                .vmOption("-XX:InitialHeapSize=1000000000")
                 .vmOption("-XX:MinHeapFreeRatio=10").vmOption("-XX:MaxHeapFreeRatio=20");
         try {
             builder.doCheckpoint();
             builder.clearVmOptions();
             builder.doRestore();
         } finally {
-            builder.ensureContainerKilled();
+//            builder.ensureContainerKilled();
         }
     }
 
