@@ -46,7 +46,7 @@ class G1UncommitRegionTask : public G1ServiceTask {
   // The _active state is used to prevent the task from being enqueued on the
   // service thread multiple times. If the task is active, a new requst to
   // enqueue it will be ignored.
-  bool _active;
+  Mutex _active;
 
   // Members to keep a summary of the current concurrent uncommit
   // work. Used for printing when no more work is available.

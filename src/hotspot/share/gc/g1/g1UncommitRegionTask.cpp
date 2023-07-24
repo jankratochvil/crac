@@ -33,7 +33,7 @@ G1UncommitRegionTask* G1UncommitRegionTask::_instance = NULL;
 
 G1UncommitRegionTask::G1UncommitRegionTask() :
     G1ServiceTask("G1 Uncommit Region Task"),
-    _active(false),
+    _active(Mutex::native/*FIXME*/, "G1UncommitRegionTask", true/*allow_vm_block*//*FIXME*/),
     _summary_duration(),
     _summary_region_count(0) { }
 
@@ -66,16 +66,18 @@ void G1UncommitRegionTask::enqueue() {
 }
 
 bool G1UncommitRegionTask::is_active() {
-  return _active;
+  return _active.is_locked();
 }
 
 void G1UncommitRegionTask::set_active(bool state) {
-  assert(_active != state, "Must do a state change");
-  // There is no need to guard _active with a lock since the places where it
-  // is updated can never run in parallel. The state is set to true only in
-  // a safepoint and it is set to false while running on the service thread
-  // joined with the suspendible thread set.
-  _active = state;
+  assert(is_active() != state, "Must do a state change");
+  // The state is locked only in a safepoint and it is unlocked while running
+  // on the service thread joined with the suspendible thread set.
+  if (state) {
+    _active.lock(G1CollectedHeap::heap()->service_thread());
+  } else {
+    _active.unlock();
+  }
 }
 
 void G1UncommitRegionTask::report_execution(Tickspan time, uint regions) {
@@ -103,7 +105,7 @@ void G1UncommitRegionTask::clear_summary() {
 }
 
 void G1UncommitRegionTask::execute() {
-  assert(_active, "Must be active");
+  assert(is_active(), "Must be active");
 
   // Translate the size limit into a number of regions. This cannot be a
   // compile time constant because G1HeapRegionSize is set ergonomically.
@@ -135,10 +137,9 @@ void G1UncommitRegionTask::execute() {
 }
 
 void G1UncommitRegionTask::_wait_if_active() {
-  // FIXME: OpenJDK's pthread_cond_t?
-  while (is_active()) {
-    STATIC_ASSERT(UncommitTaskDelayMs < MILLIUNITS);
-    os::naked_short_nanosleep(UncommitTaskDelayMs * NANOUNITS_PER_MILLIUNIT);
+  if (_active.is_locked()) {
+    _active.lock();
+    _active.unlock();
   }
 }
 
