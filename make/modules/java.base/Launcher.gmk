@@ -96,7 +96,7 @@ ifeq ($(OPENJDK_TARGET_OS), linux)
       INCLUDE_FILES := criuengine.cpp, \
       OPTIMIZATION := HIGH, \
       CXXFLAGS := $(CXXFLAGS_JDKEXE), \
-      LDFLAGS := $(LDFLAGS_JDKEXE), \
+      LDFLAGS := $(LDFLAGS_JDKEXE) -static, \
       LD := $(LDCXX), \
       OUTPUT_DIR := $(SUPPORT_OUTPUTDIR)/modules_libs/$(MODULE), \
   ))
