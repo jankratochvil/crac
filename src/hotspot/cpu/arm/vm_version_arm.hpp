@@ -43,6 +43,8 @@ class VM_Version: public Abstract_VM_Version {
   static bool is_initialized()      { return _is_initialized; }
   static void crac_restore() {}
   static void crac_restore_finalize() {}
+  static const char* crac_features_string() { return nullptr; }
+  static bool crac_features_string_check(const char* str) { return str == nullptr; }
 
 
  protected:

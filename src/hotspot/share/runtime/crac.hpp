@@ -57,6 +57,12 @@ private:
   static jlong checkpoint_nanos;
   static char checkpoint_bootid[UUID_LENGTH];
   static jlong javaTimeNanos_offset;
+
+  static void cpufeatures_path_set(const char *dirname);
+  static bool cpufeatures_store();
+  static bool cpufeatures_restore();
+
+  static char cpufeatures_path[PATH_MAX + 1];
 };
 
 #endif //SHARE_RUNTIME_CRAC_HPP

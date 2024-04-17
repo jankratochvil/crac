@@ -803,21 +803,21 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
   };
 };
 
-uint64_t VM_Version::CPUFeatures_parse(uint64_t &glibc_features) {
+uint64_t VM_Version::CPUFeatures_parse(const char *str, uint64_t &glibc_features) {
   glibc_features = _glibc_features;
 #ifndef LINUX
   _ignore_glibc_not_using = true;
   return _features;
 #endif
-  if (CPUFeatures == NULL || strcmp(CPUFeatures, "native") == 0) {
+  if (str == NULL || strcmp(str, "native") == 0) {
     return _features;
   }
-  if (strcmp(CPUFeatures, "ignore") == 0) {
+  if (strcmp(str, "ignore") == 0) {
     _ignore_glibc_not_using = true;
     return _features;
   }
   glibc_features = 0;
-  if (strcmp(CPUFeatures, "generic") == 0) {
+  if (strcmp(str, "generic") == 0) {
     // 32-bit x86 cannot rely on anything.
     return 0
 #ifdef AMD64
@@ -838,7 +838,7 @@ uint64_t VM_Version::CPUFeatures_parse(uint64_t &glibc_features) {
   char *endptr;
   errno = 0;
   uint64_t retval;
-  unsigned long long ull = strtoull(CPUFeatures, &endptr, 0);
+  unsigned long long ull = strtoull(str, &endptr, 0);
   retval = ull;
   if (!errno && *endptr == ',' && retval == ull) {
     ull = strtoull(endptr + 1, &endptr, 0);
@@ -847,7 +847,7 @@ uint64_t VM_Version::CPUFeatures_parse(uint64_t &glibc_features) {
       return retval;
     }
   }
-  vm_exit_during_initialization(err_msg("VM option 'CPUFeatures=%s' must be of the form: 0xnum,0xnum", CPUFeatures));
+  vm_exit_during_initialization(err_msg("VM option 'CPUFeatures=%s' must be of the form: 0xnum,0xnum", str));
   return -1;
 }
 
@@ -2579,6 +2579,22 @@ void VM_Version::crac_restore_finalize() {
   }
 }
 
+const char* VM_Version::crac_features_string() {
+  static char buf[64];
+  int err = snprintf(buf, sizeof(buf), "0x" UINT64_FORMAT ",0x" UINT64_FORMAT "\n");
+  assert(err < sizeof(buf), "crac_features_string buffer overflow");
+  return buf;
+}
+
+bool VM_Version::crac_features_string_check(const char* str) {
+  if (str == nullptr) {
+    return false;
+  }
+  uint64_t GLIBCFeatures_x64;
+  uint64_t   CPUFeatures_x64 = CPUFeatures_parse(str, GLIBCFeatures_x64);
+  return true;
+}
+
 #ifdef COMPILER2
 // Determine if it's running on Cascade Lake using default options.
 bool VM_Version::is_default_intel_cascade_lake() {
@@ -2627,7 +2643,7 @@ void VM_Version::initialize() {
 
   assert(!CPUFeatures == FLAG_IS_DEFAULT(CPUFeatures), "CPUFeatures parsing");
   uint64_t GLIBCFeatures_x64;
-  uint64_t   CPUFeatures_x64 = CPUFeatures_parse(GLIBCFeatures_x64);
+  uint64_t   CPUFeatures_x64 = CPUFeatures_parse(CPUFeatures, GLIBCFeatures_x64);
   uint64_t       features_missing =   CPUFeatures_x64 & ~      _features;
   uint64_t glibc_features_missing = GLIBCFeatures_x64 & ~_glibc_features;
 

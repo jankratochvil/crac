@@ -411,6 +411,81 @@ static Handle ret_cr(int ret, Handle new_args, Handle new_props, Handle err_code
   return bundle;
 }
 
+void crac::cpufeatures_path_set(const char *dirname) {
+  int err = snprintf(cpufeatures_path, sizeof(cpufeatures_path), "%s/cpufeatures", dirname);
+  if (err < 0 || err >= sizeof(cpufeatures_path)) {
+    warning("Invalid path: %s", cpufeatures_path);
+    return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
+  }
+}
+
+// Return success.
+bool crac::cpufeatures_store() {
+  const char *str = VM_Version::crac_features_string();
+  if (!str) {
+    *cpufeatures_path = 0;
+    return true;
+  }
+
+  int fd = open(cpufeatures_path, O_WRONLY | O_CREAT, 0644);
+  if (fd == -1) {
+    warning("cannot create %s: %s", cpufeatures_path, os::strerror(errno));
+    return false;
+  }
+
+  bool retval = true;
+  if (write(fd, str, strlen(str)) == strlen(str)) {
+    warning("cannot write to %s: %s", cpufeatures_path, os::strerror(errno));
+    retval = false;
+  }
+
+  if (close(fd)) {
+    warning("cannot close %s: %s", cpufeatures_path, os::strerror(errno));
+    retval = false;
+  }
+
+  return retval;
+}
+
+// Return success.
+bool crac::cpufeatures_restore() {
+  static char *bufp = NULL;
+  int fd = open(cpufeatures_path, O_RDONLY);
+  if (fd == -1 && errno != ENOENT) {
+    warning("cannot open %s: %s", cpufeatures_path, os::strerror(errno));
+    return false;
+  }
+
+  if (fd != -1) {
+    static char buf[64];
+    bufp = buf;
+
+    bool retval = true;
+
+    ssize_t got = read(fd, buf, sizeof(buf));
+    if (got <= 0 || got >= sizeof(buf)) {
+      warning("error reading %s: %s", cpufeatures_path, os::strerror(errno));
+      retval = false;
+    }
+    buf[got] = 0;
+
+    if (close(fd)) {
+      warning("cannot close %s: %s", cpufeatures_path, os::strerror(errno));
+      retval = false;
+    }
+    if (!retval) {
+      return false;
+    }
+  }
+
+  if (!VM_Version::crac_features_string_check(bufp)) {
+    warning("CPUFeatures are not compatible: %s", cpufeatures_path);
+    return false;
+  }
+
+  return true;
+}
+
 /** Checkpoint main entry.
  */
 Handle crac::checkpoint(jarray fd_arr, jobjectArray obj_arr, bool dry_run, jlong jcmd_stream, TRAPS) {
@@ -420,6 +495,11 @@ Handle crac::checkpoint(jarray fd_arr, jobjectArray obj_arr, bool dry_run, jlong
 
   if (-1 == os::mkdir(CRaCCheckpointTo) && errno != EEXIST) {
     warning("cannot create %s: %s", CRaCCheckpointTo, os::strerror(errno));
+    return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
+  }
+
+  cpufeatures_path_set(CRaCCheckpointTo);
+  if (!cpufeatures_store()) {
     return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
   }
 
@@ -516,6 +596,11 @@ void crac::restore() {
       LINUX_ONLY(setenv("CRAC_NEW_ARGS_ID", strid, true));
     }
     close(shmfd);
+  }
+
+  cpufeatures_path_set(CRaCRestoreFrom);
+  if (!cpufeatures_restore()) {
+    return;
   }
 
   if (_crengine) {

@@ -89,6 +89,8 @@ public:
   static void check_virtualizations();
   static void crac_restore() {}
   static void crac_restore_finalize() {}
+  static const char* crac_features_string() { return nullptr; }
+  static bool crac_features_string_check(const char* str) { return str == nullptr; }
 
   // Override Abstract_VM_Version implementation
   static void print_platform_virtualization_info(outputStream*);
