@@ -58,7 +58,7 @@ private:
   static char checkpoint_bootid[UUID_LENGTH];
   static jlong javaTimeNanos_offset;
 
-  static void cpufeatures_path_set(const char *dirname);
+  static bool cpufeatures_path_set(const char *dirname);
   static bool cpufeatures_store();
   static bool cpufeatures_restore();
 

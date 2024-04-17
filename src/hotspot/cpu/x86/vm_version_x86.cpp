@@ -2581,8 +2581,8 @@ void VM_Version::crac_restore_finalize() {
 
 const char* VM_Version::crac_features_string() {
   static char buf[64];
-  int err = snprintf(buf, sizeof(buf), "0x" UINT64_FORMAT ",0x" UINT64_FORMAT "\n");
-  assert(err < sizeof(buf), "crac_features_string buffer overflow");
+  int err = snprintf(buf, sizeof(buf), "0x" UINT64_FORMAT ",0x" UINT64_FORMAT "\n", _features, _glibc_features);
+  assert(err > 0 && (unsigned)err < sizeof(buf), "crac_features_string buffer overflow");
   return buf;
 }
 

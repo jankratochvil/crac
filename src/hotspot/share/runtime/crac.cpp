@@ -411,12 +411,15 @@ static Handle ret_cr(int ret, Handle new_args, Handle new_props, Handle err_code
   return bundle;
 }
 
-void crac::cpufeatures_path_set(const char *dirname) {
+char crac::cpufeatures_path[PATH_MAX + 1];
+
+bool crac::cpufeatures_path_set(const char *dirname) {
   int err = snprintf(cpufeatures_path, sizeof(cpufeatures_path), "%s/cpufeatures", dirname);
-  if (err < 0 || err >= sizeof(cpufeatures_path)) {
+  if (err < 0 || (unsigned)err >= sizeof(cpufeatures_path)) {
     warning("Invalid path: %s", cpufeatures_path);
-    return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
+    return false;
   }
+  return true;
 }
 
 // Return success.
@@ -434,7 +437,7 @@ bool crac::cpufeatures_store() {
   }
 
   bool retval = true;
-  if (write(fd, str, strlen(str)) == strlen(str)) {
+  if (write(fd, str, strlen(str)) == (ssize_t)strlen(str)) {
     warning("cannot write to %s: %s", cpufeatures_path, os::strerror(errno));
     retval = false;
   }
@@ -463,7 +466,7 @@ bool crac::cpufeatures_restore() {
     bool retval = true;
 
     ssize_t got = read(fd, buf, sizeof(buf));
-    if (got <= 0 || got >= sizeof(buf)) {
+    if (got <= 0 || (size_t)got >= sizeof(buf)) {
       warning("error reading %s: %s", cpufeatures_path, os::strerror(errno));
       retval = false;
     }
@@ -498,8 +501,7 @@ Handle crac::checkpoint(jarray fd_arr, jobjectArray obj_arr, bool dry_run, jlong
     return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
   }
 
-  cpufeatures_path_set(CRaCCheckpointTo);
-  if (!cpufeatures_store()) {
+  if (!cpufeatures_path_set(CRaCCheckpointTo) || !cpufeatures_store()) {
     return ret_cr(JVM_CHECKPOINT_NONE, Handle(), Handle(), Handle(), Handle(), THREAD);
   }
 
@@ -598,8 +600,7 @@ void crac::restore() {
     close(shmfd);
   }
 
-  cpufeatures_path_set(CRaCRestoreFrom);
-  if (!cpufeatures_restore()) {
+  if (!cpufeatures_path_set(CRaCRestoreFrom) || !cpufeatures_restore()) {
     return;
   }
 

@@ -613,7 +613,7 @@ private:
   static void get_processor_features_hardware();
   static void get_processor_features_hotspot();
 
-  static uint64_t CPUFeatures_parse(uint64_t &glibc_features);
+  static uint64_t CPUFeatures_parse(const char *str, uint64_t &glibc_features);
 #ifdef LINUX
   static void glibc_not_using(uint64_t excessive_CPU, uint64_t excessive_GLIBC);
   static bool glibc_env_set(char *disable_str);
@@ -676,7 +676,7 @@ public:
   static void crac_restore();
   static void crac_restore_finalize();
   static const char* crac_features_string();
-  static bool crac_features_string_check(const char* str) { return str == nullptr; }
+  static bool crac_features_string_check(const char* str);
 
   // Override Abstract_VM_Version implementation
   static void print_platform_virtualization_info(outputStream*);
