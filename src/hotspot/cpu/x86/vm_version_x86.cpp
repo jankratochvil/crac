@@ -2592,6 +2592,51 @@ bool VM_Version::crac_features_string_check(const char* str) {
   }
   uint64_t GLIBCFeatures_x64;
   uint64_t   CPUFeatures_x64 = CPUFeatures_parse(str, GLIBCFeatures_x64);
+
+  assert(!CPUFeatures == FLAG_IS_DEFAULT(CPUFeatures), "CPUFeatures parsing");
+  uint64_t GLIBCFeatures_x64;
+  uint64_t   CPUFeatures_x64 = CPUFeatures_parse(CPUFeatures, GLIBCFeatures_x64);
+  uint64_t       features_missing =   CPUFeatures_x64 & ~      _features;
+  uint64_t glibc_features_missing = GLIBCFeatures_x64 & ~_glibc_features;
+
+  // Workaround JDK-8311164: CPU_HT is set randomly on hybrid CPUs like Alder Lake.
+  features_missing &= ~CPU_HT;
+
+  if (features_missing || glibc_features_missing) {
+    static const char part1[] = "Specified -XX:CPUFeatures=";
+    tty->print_raw(part1, sizeof(part1) - 1);
+    nonlibc_tty_print_uint64_comma_uint64(CPUFeatures_x64, GLIBCFeatures_x64);
+    static const char part2[] = "; this machine's CPU features are ";
+    tty->print_raw(part2, sizeof(part2) - 1);
+    nonlibc_tty_print_uint64_comma_uint64(_features, _glibc_features);
+    missing_features(features_missing, glibc_features_missing);
+    vm_exit_during_initialization();
+  }
+
+  uint64_t       features_saved =       _features;
+  uint64_t glibc_features_saved = _glibc_features;
+
+        _features =   CPUFeatures_x64;
+  _glibc_features = GLIBCFeatures_x64;
+
+  if (ShowCPUFeatures)
+    print_using_features_cr();
+
+#ifdef LINUX
+  if (!_ignore_glibc_not_using) {
+    uint64_t       features_expected =   MAX_CPU - 1;
+    uint64_t glibc_features_expected = MAX_GLIBC - 1;
+    if (!INCLUDE_CPU_FEATURE_ACTIVE) {
+            features_expected =       features_saved;
+      glibc_features_expected = glibc_features_saved;
+    }
+    glibc_not_using(      features_expected & ~      _features,
+                    glibc_features_expected & ~_glibc_features);
+  }
+#endif
+
+  get_processor_features_hotspot();
+
   return true;
 }
 
