@@ -423,6 +423,8 @@ protected:
   // glibc feature flags.
   static uint64_t _glibc_features;
 
+  static uint64_t features_saved, glibc_features_saved;
+
   static const char* _features_names[];
   static const char* _glibc_features_names[];
 
@@ -615,9 +617,8 @@ private:
 
   static uint64_t CPUFeatures_parse(const char *str, uint64_t &glibc_features);
 #ifdef LINUX
-  static void glibc_not_using(uint64_t excessive_CPU, uint64_t excessive_GLIBC);
+  static bool glibc_not_using();
   static bool glibc_env_set(char *disable_str);
-  /*[[noreturn]]*/ static void glibc_reexec();
   // C++17: Make glibc_prefix and glibc_prefix_len constexpr.
   static const char glibc_prefix[];
   static const size_t glibc_prefix_len;
@@ -625,8 +626,6 @@ private:
   // C++17: Make _ignore_glibc_not_using inline.
   static bool _ignore_glibc_not_using;
   static bool _crac_restore_missing_features;
-  static void nonlibc_tty_print_uint64(uint64_t num);
-  static void nonlibc_tty_print_uint64_comma_uint64(uint64_t num1, uint64_t num2);
   static void print_using_features_cr();
   /*[[noreturn]]*/ static void missing_features(uint64_t features_missing, uint64_t glibc_features_missing);
 
