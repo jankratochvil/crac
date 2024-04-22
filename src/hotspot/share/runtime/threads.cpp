@@ -426,8 +426,6 @@ jint Threads::check_for_restore(JavaVMInitArgs* args) {
 jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   extern void JDK_Version_init();
 
-  if (check_for_restore(args) != JNI_OK) return JNI_ERR;
-
   // Preinitialize version info.
   VM_Version::early_initialize();
 
@@ -439,6 +437,9 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Initialize the output stream module
   ostream_init();
+
+  // Output stream module should be already initialized for error reporting during restore.
+  if (check_for_restore(args) != JNI_OK) return JNI_ERR;
 
   // Process java launcher properties.
   Arguments::process_sun_java_launcher_properties(args);

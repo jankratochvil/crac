@@ -676,6 +676,7 @@ public:
   static void crac_restore_finalize();
   static const char* crac_features_string();
   static bool crac_features_string_check(const char* str);
+  static void restore_check(const char* str, const char* msg_prefix);
 
   // Override Abstract_VM_Version implementation
   static void print_platform_virtualization_info(outputStream*);

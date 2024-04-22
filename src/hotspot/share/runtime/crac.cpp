@@ -437,7 +437,7 @@ bool crac::cpufeatures_store() {
   }
 
   bool retval = true;
-  if (write(fd, str, strlen(str)) == (ssize_t)strlen(str)) {
+  if (write(fd, str, strlen(str)) != (ssize_t)strlen(str)) {
     warning("cannot write to %s: %s", cpufeatures_path, os::strerror(errno));
     retval = false;
   }

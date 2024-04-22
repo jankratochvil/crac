@@ -2509,17 +2509,20 @@ void VM_Version::crac_restore_finalize() {
 
 const char* VM_Version::crac_features_string() {
   static char buf[64];
-  int err = snprintf(buf, sizeof(buf), "0x" UINT64_FORMAT ",0x" UINT64_FORMAT "\n", _features, _glibc_features);
+  int err = snprintf(buf, sizeof(buf), UINT64_FORMAT_X "," UINT64_FORMAT_X "\n", _features, _glibc_features);
   assert(err > 0 && (unsigned)err < sizeof(buf), "crac_features_string buffer overflow");
   return buf;
 }
 
-bool VM_Version::crac_features_string_check(const char* str) {
-  if (str == nullptr) {
-    return false;
-  }
+void VM_Version::restore_check(const char* str, const char* msg_prefix) {
   uint64_t GLIBCFeatures_x64;
   uint64_t   CPUFeatures_x64 = CPUFeatures_parse(str, GLIBCFeatures_x64);
+
+  assert(      _features == 0,       "_features should be zero at startup");
+  assert(_glibc_features == 0, "_glibc_features should be zero at startup");
+  get_processor_features_hardware();
+        features_saved =       _features;
+  glibc_features_saved = _glibc_features;
 
   uint64_t       features_missing =   CPUFeatures_x64 & ~      features_saved;
   uint64_t glibc_features_missing = GLIBCFeatures_x64 & ~glibc_features_saved;
@@ -2529,13 +2532,37 @@ bool VM_Version::crac_features_string_check(const char* str) {
 
   if (features_missing || glibc_features_missing) {
     tty->print(
-      "Snapshot's CPUFeatures=" UINT64_FORMAT_X "," UINT64_FORMAT_X
+      "%sCPUFeatures=" UINT64_FORMAT_X "," UINT64_FORMAT_X
       "; this machine's CPU features are " UINT64_FORMAT_X "," UINT64_FORMAT_X,
+      msg_prefix,
       CPUFeatures_x64, GLIBCFeatures_x64,
       features_saved, glibc_features_saved);
     missing_features(features_missing, glibc_features_missing);
     vm_exit_during_initialization();
   }
+
+        _features =   CPUFeatures_x64;
+  _glibc_features = GLIBCFeatures_x64;
+
+  if (ShowCPUFeatures)
+    print_using_features_cr();
+}
+
+bool VM_Version::crac_features_string_check(const char* str) {
+  if (str == nullptr) {
+    return false;
+  }
+
+  const char *cs = strchr(str, '\n');
+  if (!cs || cs[1]) {
+    vm_exit_during_initialization(err_msg("cpufeatures string must be newline-terminated: '%s'", str));
+  }
+  char str2[cs - str + 1];
+  memcpy(str2, str, cs - str);
+  str2[cs - str] = 0;
+  str = str2;
+
+  restore_check(str, "Snapshot's ");
 
 #ifdef LINUX
   glibc_not_using();
@@ -2586,36 +2613,8 @@ void VM_Version::initialize() {
   detect_virt_stub = CAST_TO_FN_PTR(detect_virt_stub_t,
                                      g.generate_detect_virt());
 
-  assert(      _features == 0,       "_features should be zero at startup");
-  assert(_glibc_features == 0, "_glibc_features should be zero at startup");
-  get_processor_features_hardware();
-        features_saved =       _features;
-  glibc_features_saved = _glibc_features;
-
   assert(!CPUFeatures == FLAG_IS_DEFAULT(CPUFeatures), "CPUFeatures parsing");
-  uint64_t GLIBCFeatures_x64;
-  uint64_t   CPUFeatures_x64 = CPUFeatures_parse(CPUFeatures, GLIBCFeatures_x64);
-  uint64_t       features_missing =   CPUFeatures_x64 & ~      features_saved;
-  uint64_t glibc_features_missing = GLIBCFeatures_x64 & ~glibc_features_saved;
-
-  // Workaround JDK-8311164: CPU_HT is set randomly on hybrid CPUs like Alder Lake.
-  features_missing &= ~CPU_HT;
-
-  if (features_missing || glibc_features_missing) {
-    tty->print(
-      "Specified -XX:CPUFeatures=" UINT64_FORMAT_X "," UINT64_FORMAT_X
-      "; this machine's CPU features are " UINT64_FORMAT_X "," UINT64_FORMAT_X,
-      CPUFeatures_x64, GLIBCFeatures_x64,
-      _features, _glibc_features);
-    missing_features(features_missing, glibc_features_missing);
-    vm_exit_during_initialization();
-  }
-
-        _features =   CPUFeatures_x64;
-  _glibc_features = GLIBCFeatures_x64;
-
-  if (ShowCPUFeatures)
-    print_using_features_cr();
+  restore_check(CPUFeatures, "Specified -XX:");
 
 #ifdef LINUX
   if (!glibc_not_using()) {
