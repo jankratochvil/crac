@@ -126,6 +126,9 @@
   /* These are handled as an exception in VM_Version::glibc_patch(). */ \
   GLIBC_UNSUPPORTED(CMPXCHG16        ); \
   GLIBC_UNSUPPORTED(LAHFSAHF         ); \
+  /* Unused fields, see the enum definition. */ \
+  GLIBC_UNSUPPORTED(MMX_UNUSED       ); \
+  GLIBC_UNSUPPORTED(FLUSH_UNUSED     ); \
   /**/
 
 #if INCLUDE_CPU_FEATURE_ACTIVE
@@ -143,7 +146,7 @@ int VM_Version::_stepping;
 bool VM_Version::_has_intel_jcc_erratum;
 VM_Version::CpuidInfo VM_Version::_cpuid_info = { 0, };
 
-#define DECLARE_CPU_FEATURE_NAME(id, name) XSTR(name),
+#define DECLARE_CPU_FEATURE_NAME(id, name, bit) name,
 const char* VM_Version::_features_names[] = { CPU_FEATURE_FLAGS(DECLARE_CPU_FEATURE_NAME)};
 #undef DECLARE_CPU_FEATURE_NAME
 
@@ -3230,6 +3233,9 @@ VM_Version::VM_Features VM_Version::CpuidInfo::feature_flags() const {
       }
     }
   }
+  // Unused fields, see the enum definition.
+  vm_features.set_feature(CPU_MMX_UNUSED);
+  vm_features.set_feature(CPU_FLUSH_UNUSED);
 
   // Composite features.
   if (supports_tscinv_bit() &&
